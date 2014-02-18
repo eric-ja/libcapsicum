@@ -3,5 +3,6 @@
 aclocal
 autoheader
 autoconf
+libtoolize
 automake --add-missing
 ./configure $@
