@@ -28,7 +28,10 @@
  */
 
 #include <sys/cdefs.h>
+
+#ifdef __FBSDID
 __FBSDID("$FreeBSD$");
+#endif
 
 #include <sys/types.h>
 #include <sys/capability.h>

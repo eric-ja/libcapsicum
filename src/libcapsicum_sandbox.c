@@ -28,7 +28,10 @@
  */
 
 #include <sys/cdefs.h>
+
+#ifdef __FBSDID
 __FBSDID("$FreeBSD$");
+#endif
 
 #include <sys/types.h>
 #include <sys/capability.h>
@@ -58,9 +61,12 @@ lcs_get(struct lc_host **lchpp)
 		return (0);
 	}
 
+#ifdef HAVE_LD_INSANDBOX
 	if (!ld_insandbox()) {
+#endif	
 		errno = EINVAL;
 		return (-1);
+#ifdef HAVE_LD_INSANDBOX
 	}
 
 	struct lc_fdlist *fds = lc_fdlist_global();
@@ -74,6 +80,7 @@ lcs_get(struct lc_host **lchpp)
 	lch_initialized = 1;
 	*lchpp = &lch_global;
 	return (0);
+#endif	
 }
 
 int

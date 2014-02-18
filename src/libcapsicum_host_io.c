@@ -29,7 +29,14 @@
 
 #include <sys/param.h>
 #include <sys/capability.h>
+
+#ifdef HAVE_SYS_PROCDESC_H
 #include <sys/procdesc.h>
+#endif
+#ifdef HAVE_LINUX_PROCDESC_H
+#include <linux/procdesc.h>
+#endif
+
 #include <sys/socket.h>
 #include <sys/uio.h>
 
@@ -41,6 +48,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdint.h>   /* for uintptr_t */
 
 #include "libcapsicum.h"
 #include "libcapsicum_internal.h"
@@ -167,7 +175,11 @@ lch_rpc_internal(struct lc_sandbox *lcsp, u_int32_t opno, struct iovec *req,
 	    rep_hdr.lcrpc_rephdr_datalen > req_hdr.lcrpc_reqhdr_maxrepdatalen) {
 		if (rep_fdp != NULL)
 			_lc_dispose_rights(rep_fdp, *rep_fdcountp);
+#ifdef HAVE_EBADPC
 		errno = EBADRPC;
+#else
+                errno = EBADRQC;
+#endif
 		return (-1);
 	}
 

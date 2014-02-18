@@ -1,1 +1,13 @@
 *.swp
+*~
+*.o
+*.la
+DEADJOE
+.deps
+.libs
+*.in
+Makefile
+*.log
+config.*
+*.a
+*.lo

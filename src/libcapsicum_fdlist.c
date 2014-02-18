@@ -40,6 +40,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdint.h>    /* for uintptr_t */
 
 #include "libcapsicum_internal.h"
 #include "libcapsicum_sandbox_api.h"
@@ -80,6 +81,19 @@ static struct lc_fdlist global_fdlist = {
 	.lf_lock = PTHREAD_MUTEX_INITIALIZER,
 };
 
+#ifndef HAVE_CLOSEFROM
+static void
+closefrom(int lowfd) {
+    struct rlimit rl;
+    int i;
+    
+    getrlimit(RLIMIT_NOFILE, &rl);
+    for (i = lowfd; i < rl.rlim_max; i++) {
+        (void) close(i);
+    }
+}
+#endif
+
 struct lc_fdlist *
 lc_fdlist_global(void)
 {
@@ -112,8 +126,13 @@ lc_fdlist_global(void)
 			goto fail;
 		if (fstat(fd, &sb) < 0)
 			goto fail;
+#ifdef HAVE_MAP_NOSYNC
 		lfsp = mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE,
 		    MAP_NOSYNC | MAP_SHARED, fd, 0);
+#else		    
+		lfsp = mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE,
+		    MAP_SHARED, fd, 0);
+#endif
 		if (lfsp == MAP_FAILED)
 			goto fail;
 
@@ -157,8 +176,13 @@ lc_fdlist_set_global(struct lc_fdlist *fds, int shmfd)
 	if (ftruncate(shmfd, fdlistsize) < 0)
 		err(-1, "Error in ftruncate(shmfd)");
 
+#ifdef HAVE_MAP_NOSYNC
 	shm = mmap(NULL, fdlistsize, PROT_READ | PROT_WRITE,
 	    MAP_NOSYNC | MAP_SHARED, shmfd, 0);
+#else	    
+	shm = mmap(NULL, fdlistsize, PROT_READ | PROT_WRITE,
+	    MAP_SHARED, shmfd, 0);
+#endif	    
 	if (shm == MAP_FAILED)
 		err(-1, "Error mapping fdlist SHM");
 

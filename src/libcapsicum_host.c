@@ -30,8 +30,17 @@
 #include <sys/param.h>
 #include <sys/capability.h>
 #include <sys/mman.h>
+
+#ifdef HAVE_SYS_PROCDESC_H
 #include <sys/procdesc.h>
+#endif
+#ifdef HAVE_LINUX_PROCDESC_H
+#include <linux/procdesc.h>
+#endif
+#ifdef HAVE_SYS_SBUF_H
 #include <sys/sbuf.h>
+#endif
+
 #include <sys/socket.h>
 #include <sys/uio.h>
 
@@ -90,6 +99,7 @@ static void
 lch_sandbox(int fd_sock, int fd_binary, int fd_rtld, u_int flags,
     const char *binname, char *const argv[], struct lc_fdlist *userfds)
 {
+#ifdef __FreeBSD__
 	struct sbuf *sbufp;
 	int shmfd = -1;
 	struct lc_fdlist *fds;
@@ -257,6 +267,9 @@ lch_sandbox(int fd_sock, int fd_binary, int fd_rtld, u_int flags,
 
 	(void)fexecve(fd_rtld, argv, environ);
 	dprintf(2, "ERROR: fexecve() failed; errno = %d\n", errno);
+#else
+	dprintf(2, "ERROR: fexecve() failed; not implemented on this platform\n");
+#endif
 }
 
 int
@@ -276,6 +289,7 @@ lch_startfd(int fd_binary, const char *binname, char *const argv[],
 		return (-1);
 	bzero(lcsp, sizeof(*lcsp));
 
+#ifdef HAVE_LD_INSANDBOX
 	if (ld_insandbox()) {
 		struct lc_fdlist *globals;
 		int pos = 0;
@@ -287,21 +301,26 @@ lch_startfd(int fd_binary, const char *binname, char *const argv[],
 		    &fd_rtld, &pos) < 0)
 			goto out_error;
 	} else {
+#endif
 		fd_rtld = open(PATH_LD_ELF_CAP_SO "/" LD_ELF_CAP_SO,
 		    O_RDONLY);
 		if (fd_rtld < 0)
 			goto out_error;
+#ifdef HAVE_LD_INSANDBOX
 	}
+#endif	
 
 	if (socketpair(PF_LOCAL, SOCK_STREAM, 0, fd_sockpair) < 0)
 		goto out_error;
 
+#ifdef HAVE_SO_NOSIGPIPE
 	val = 1;
 	if (setsockopt(fd_sockpair[0], SOL_SOCKET, SO_NOSIGPIPE, &val,
 	    sizeof(val)) < 0) {
 		fd_sockpair[0] = fd_sockpair[1] = -1;
 		goto out_error;
 	}
+#endif
 
 	pid = pdfork(&fd_procdesc, 0);
 	if (pid < 0) {
@@ -345,8 +364,13 @@ lch_start(const char *sandbox, char *const argv[], u_int flags,
 	char binname[MAXPATHLEN];
 	int error, fd_binary, ret;
 
+#ifdef HAVE_BASENAME_R
 	if (basename_r(sandbox, binname) == NULL)
 		return (-1);
+#else
+	strncpy(binname, sandbox, MAXPATHLEN);
+	strncpy(binname, basename(binname), MAXPATHLEN);
+#endif
 
 	fd_binary = open(sandbox, O_RDONLY);
 	if (fd_binary < 0)

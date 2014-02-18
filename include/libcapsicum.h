@@ -32,6 +32,11 @@
 
 #include <sys/cdefs.h>
 #include <sys/capability.h>
+#include <sys/types.h>
+
+#ifdef NEED_CAPSICUM_H
+#include "capsicum/capsicum.h"
+#endif
 
 __BEGIN_DECLS
 
